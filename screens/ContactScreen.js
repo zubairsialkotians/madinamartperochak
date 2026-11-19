@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { Screen, Card, SectionTitle, Empty } from '../components/ui';
 import { useAuth } from '../components/AuthContext';
+import DeveloperPromo from '../components/DeveloperPromo';
 import { money } from '../services/format';
 import { colors } from '../theme';
 
@@ -110,6 +111,8 @@ export default function ContactScreen() {
           </Card>
         </>
       )}
+
+      <DeveloperPromo />
     </Screen>
   );
 }

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Switch } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Screen, Field, Button, Footer, SectionTitle, Card, Loading, ErrorBox, s } from '../components/ui';
+import { Screen, Field, Button, Footer, SectionTitle, Card, Loading, ErrorBox, Chip, ChipRow, s } from '../components/ui';
+import { PAY_TYPES } from '../components/payments';
 import { useLoad } from '../components/useData';
 import { useAuth } from '../components/AuthContext';
 import { api } from '../services/api';
@@ -20,6 +21,7 @@ export default function SettingsScreen({ navigation }) {
         ...data,
         about: data.about || '', email: data.email || '', hours: data.hours || '', map_url: data.map_url || '',
         website: data.website || '', facebook: data.facebook || '', instagram: data.instagram || '',
+        cod: data.cod !== false, pay_accounts: data.pay_accounts || [],
         delivery_fee: String(data.delivery_fee || ''), free_delivery_over: String(data.free_delivery_over || ''), min_order: String(data.min_order || ''),
       });
     }
@@ -37,11 +39,19 @@ export default function SettingsScreen({ navigation }) {
     }
   };
 
+  // Payment accounts (Easypaisa, JazzCash, bank…) edited in place; the server gives new ones their key
+  const setAcc = (i, patch) => setF((x) => ({ ...x, pay_accounts: x.pay_accounts.map((a, j) => (j === i ? { ...a, ...patch } : a)) }));
+  const addAcc = () => setF((x) => ({ ...x, pay_accounts: [...x.pay_accounts, { type: 'easypaisa', name: 'Easypaisa', title: '', number: '', note: '' }] }));
+  const removeAcc = (i) => setF((x) => ({ ...x, pay_accounts: x.pay_accounts.filter((_, j) => j !== i) }));
+  const pickType = (i, a, type) => setAcc(i, {
+    type, name: !a.name || a.name === PAY_TYPES[a.type]?.label ? PAY_TYPES[type].label : a.name,
+  });
+
   const save = async () => {
     setBusy(true);
     try {
       const keys = ['phone', 'whatsapp', 'address', 'notice', 'delivery_fee', 'free_delivery_over', 'min_order', 'pickup', 'is_open', 'closed_message', 'order_prefix', 'bill_caption', 'logo_id',
-        'about', 'email', 'hours', 'map_url', 'website', 'facebook', 'instagram'];
+        'about', 'email', 'hours', 'map_url', 'website', 'facebook', 'instagram', 'cod', 'pay_accounts'];
       const r = await api.saveSettings(Object.fromEntries(keys.map((k) => [k, typeof f[k] === 'boolean' ? (f[k] ? 1 : 0) : f[k]])));
       setShop(r.shop);
       Toast.show({ type: 'success', text1: r.message });
@@ -89,6 +99,35 @@ export default function SettingsScreen({ navigation }) {
       <Field label="Website" value={f.website} onChangeText={set('website')} autoCapitalize="none" keyboardType="url" placeholder="www.example.com" />
       <Field label="Facebook page" value={f.facebook} onChangeText={set('facebook')} autoCapitalize="none" keyboardType="url" placeholder="facebook.com/yourshop" />
       <Field label="Instagram" value={f.instagram} onChangeText={set('instagram')} autoCapitalize="none" keyboardType="url" placeholder="instagram.com/yourshop" />
+
+      <SectionTitle>Payment methods</SectionTitle>
+      <Card>
+        <Toggle label="Cash on delivery / at pickup" value={f.cod} onChange={set('cod')}
+          hint={f.cod ? 'Customers can pay cash' : 'Customers must pay into one of the accounts below'} />
+      </Card>
+      <Text style={[s.itemMeta, { marginBottom: 10 }]}>
+        Accounts customers can send money to. At checkout they choose one, see the number, and add a payment screenshot. You check it on the order page.
+      </Text>
+      {f.pay_accounts.map((a, i) => (
+        <Card key={a.key || `new-${i}`} style={{ gap: 4 }}>
+          <ChipRow style={{ marginBottom: 8 }}>
+            {Object.entries(PAY_TYPES).map(([t, m]) => <Chip key={t} label={m.label} active={a.type === t} onPress={() => pickType(i, a, t)} />)}
+          </ChipRow>
+          <Field label="Name customers see" value={a.name} onChangeText={(v) => setAcc(i, { name: v })} maxLength={60} placeholder="e.g. Easypaisa" />
+          <Field label="Account title" value={a.title} onChangeText={(v) => setAcc(i, { title: v })} maxLength={100} placeholder="e.g. Muhammad Ali" />
+          <Field label={a.type === 'bank' ? 'Account number / IBAN' : 'Account / mobile number'} value={a.number} onChangeText={(v) => setAcc(i, { number: v })}
+            maxLength={60} keyboardType={a.type === 'bank' ? 'default' : 'phone-pad'} autoCapitalize="characters" testID={`acc-number-${i}`} />
+          <Field label="Note (optional)" value={a.note} onChangeText={(v) => setAcc(i, { note: v })} maxLength={191}
+            placeholder={a.type === 'bank' ? 'e.g. Meezan Bank, Sialkot branch' : 'e.g. Send the screenshot after paying'} />
+          <Button small variant="outline" title="Remove this account" onPress={() => removeAcc(i)} />
+        </Card>
+      ))}
+      {f.pay_accounts.length < 10 && (
+        <Button variant="ghost" icon="add-circle-outline" title="Add payment account" onPress={addAcc} style={{ marginBottom: 14 }} testID="add-pay-account" />
+      )}
+      {!f.cod && !f.pay_accounts.length && (
+        <Text style={[s.itemMeta, { color: colors.danger, marginBottom: 10 }]}>Add an account or turn cash on — customers need a way to pay.</Text>
+      )}
 
       <SectionTitle>Delivery</SectionTitle>
       <View style={{ flexDirection: 'row', gap: 10 }}>

@@ -1,4 +1,4 @@
-import { money, niceDate, currencySymbol, qtyLabel, STATUS_LABELS } from './format';
+import { money, niceDate, currencySymbol, qtyLabel, STATUS_LABELS, paymentLabel } from './format';
 
 /*
   Printable documents (bill, order sheet) as one plain "model".
@@ -53,7 +53,7 @@ export function buildBill(o, shop) {
       ['Order', o.order_no],
       ['Date', niceDate(o.created_at)],
       ['Status', STATUS_LABELS[o.status] || o.status],
-      ['Payment', `Cash ${o.fulfilment === 'pickup' ? 'at pickup' : 'on delivery'}`],
+      ['Payment', paymentLabel(o) + (o.payment_status === 'verified' ? ' (paid)' : '')],
     ],
     party: {
       heading: o.fulfilment === 'pickup' ? 'Customer (pickup)' : 'Deliver to',

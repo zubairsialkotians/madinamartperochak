@@ -13,7 +13,7 @@ export function useCart() {
 }
 
 /*
-  Cart lines: { item_id, name, unit, price, image, qty, min_qty, qty_step, max_qty }
+  Cart lines: { item_id, name, unit, price, image, qty, min_qty, qty_step, max_qty, qty_options }
   Kept on the phone (works for guests). Prices are refreshed from the server on the
   cart screen, and the server prices the order again when it's placed.
 */
@@ -34,7 +34,7 @@ export function CartProvider({ children }) {
 
   const lineFrom = (p, qty) => ({
     item_id: p.id, name: p.name, unit: p.unit, price: p.price, image: p.image,
-    min_qty: p.min_qty, qty_step: p.qty_step, max_qty: p.max_qty, qty: cleanQty(qty),
+    min_qty: p.min_qty, qty_step: p.qty_step, max_qty: p.max_qty, qty_options: p.qty_options || [], qty: cleanQty(qty),
   });
 
   // Adds to what's already in the cart

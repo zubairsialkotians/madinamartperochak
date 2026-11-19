@@ -3,6 +3,8 @@ import { Text, Linking } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Screen, Card, Loading, ErrorBox, SectionTitle, Button, Footer, s } from '../components/ui';
 import { OrderProgress, OrderItems, OrderTotals, StatusBadge } from '../components/orders';
+import { PaymentCard } from '../components/payments';
+import { pickImage } from '../services/images';
 import { useLoad } from '../components/useData';
 import { useAuth } from '../components/AuthContext';
 import { api } from '../services/api';
@@ -15,6 +17,7 @@ export default function MyOrderDetailScreen({ navigation, route }) {
   const { id, key } = route.params;
   const { shop } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
   const { data: o, loading, error, reload, refresh, refreshing, setData } = useLoad(
     () => (key ? api.trackOrder(id, key) : api.myOrder(id)).then((r) => r.order), [id, key],
   );
@@ -33,6 +36,21 @@ export default function MyOrderDetailScreen({ navigation, route }) {
     }
   };
 
+  const sendProof = async () => {
+    try {
+      const img = await pickImage({ maxWidth: 1400 });
+      if (!img) return;
+      setSending(true);
+      const r = await api.sendPaymentProof(o.id, img.base64, key);
+      setData(r.order);
+      Toast.show({ type: 'success', text1: r.message });
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Could not send the screenshot', text2: e.message });
+    } finally {
+      setSending(false);
+    }
+  };
+
   if (loading) return <Screen title="Order"><Loading /></Screen>;
   if (error) return <Screen title="Order"><ErrorBox message={error} onRetry={reload} /></Screen>;
 
@@ -46,6 +64,8 @@ export default function MyOrderDetailScreen({ navigation, route }) {
       footer={o.can_cancel && !key ? <Footer><Button title="Cancel order" variant="outline" onPress={cancel} loading={busy} /></Footer> : null}
     >
       <OrderProgress order={o} />
+      <SectionTitle>Payment</SectionTitle>
+      <PaymentCard order={o} onSend={sendProof} sending={sending} />
       <SectionTitle>{o.fulfilment === 'pickup' ? 'Pickup' : 'Delivery'}</SectionTitle>
       <Card>
         <Text style={{ fontWeight: '700', color: colors.text }}>{o.name} · {o.phone}</Text>

@@ -3,7 +3,7 @@ import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, KV, Badge, s } from './ui';
 import { ProductImage } from './shop';
-import { money, qtyLabel, niceDate, STATUS_LABELS } from '../services/format';
+import { money, qtyLabel, niceDate, STATUS_LABELS, paymentLabel } from '../services/format';
 import { colors } from '../theme';
 
 export function StatusBadge({ status }) {
@@ -83,7 +83,7 @@ export function OrderTotals({ order, showProfit }) {
       <KV label="Total" value={money(order.total)} bold />
       {order.refunded > 0 && <KV label="Refunded (returns)" value={`-${money(order.refunded)}`} tone="bad" />}
       {showProfit && order.profit != null && <KV label="Profit on items" value={money(order.profit)} tone={order.profit >= 0 ? 'good' : 'bad'} />}
-      <Text style={s.itemMeta}>Payment: cash {order.fulfilment === 'pickup' ? 'at pickup' : 'on delivery'}</Text>
+      <Text style={s.itemMeta}>Payment: {paymentLabel(order)}</Text>
     </Card>
   );
 }

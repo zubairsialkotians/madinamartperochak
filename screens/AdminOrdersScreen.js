@@ -52,7 +52,9 @@ export default function AdminOrdersScreen({ navigation, route }) {
           title={`${o.order_no} · ${o.name}`}
           badge={<StatusBadge status={o.status} />}
           subtitle={`${niceDate(o.created_at)} · ${o.item_count} item${o.item_count === 1 ? '' : 's'} · ${o.fulfilment === 'pickup' ? 'Pickup' : 'Delivery'}`}
-          meta={[o.phone, isOwner ? o.branch_name : null].filter(Boolean).join(' · ')}
+          meta={[o.phone, isOwner ? o.branch_name : null, o.payment_method && o.payment_method !== 'cod'
+            ? `${o.payment_name}: ${{ awaiting: 'no screenshot yet', submitted: 'screenshot to check', verified: 'paid', rejected: 'not accepted' }[o.payment_status] || ''}`
+            : null].filter(Boolean).join(' · ')}
           right={money(o.total)}
           onPress={() => navigation.navigate('AdminOrderDetail', { id: o.id })}
         />

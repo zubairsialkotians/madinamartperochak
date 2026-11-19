@@ -8,6 +8,14 @@ import { api } from './api';
   square: crop square in the picker (category icons, logo)
 */
 export async function pickAndUpload({ camera = false, square = false, maxWidth = 1200, title = '' } = {}) {
+  const out = await pickImage({ camera, square, maxWidth });
+  if (!out) return null;
+  const res = await api.uploadImage(out.base64, title);
+  return res.image;
+}
+
+// Pick + shrink only (nothing uploaded): { uri, base64 } or null if cancelled. Used for payment screenshots.
+export async function pickImage({ camera = false, square = false, maxWidth = 1200 } = {}) {
   if (camera) {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) throw new Error('Allow camera access in Settings to take photos.');
@@ -21,6 +29,5 @@ export async function pickAndUpload({ camera = false, square = false, maxWidth =
     a.width > maxWidth ? [{ resize: { width: maxWidth } }] : [],
     { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
   );
-  const res = await api.uploadImage(out.base64, title);
-  return res.image;
+  return { uri: out.uri, base64: out.base64 };
 }

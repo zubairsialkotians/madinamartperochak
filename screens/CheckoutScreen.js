@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Screen, Card, KV, Field, Footer, Button, Segmented, SectionTitle, s } from '../components/ui';
@@ -8,6 +9,8 @@ import { useAuth } from '../components/AuthContext';
 import { api } from '../services/api';
 import { money, qtyLabel } from '../services/format';
 import { deliveryFee, round2 } from '../services/qty';
+import { pickImage } from '../services/images';
+import { PAY_TYPES, AccountBox, cashLabel } from '../components/payments';
 import { SHOP_KEY } from '../config';
 import { colors } from '../theme';
 
@@ -21,6 +24,11 @@ export default function CheckoutScreen({ navigation }) {
     name: user?.name || '', phone: user?.phone || '', email: user?.email || '', address: user?.address || '', note: '',
   });
   const [fulfilment, setFulfilment] = useState('delivery');
+  const accounts = shop?.pay_accounts || [];
+  const codOn = shop?.cod !== false || !accounts.length;
+  const [payKey, setPayKey] = useState(codOn ? 'cod' : accounts[0]?.key);
+  const payAcc = accounts.find((a) => a.key === payKey);
+  const [proof, setProof] = useState(null); // { uri, base64 } picked, sent with the order
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const set = (k) => (v) => { setForm({ ...form, [k]: v }); setErrors({ ...errors, [k]: '' }); };
@@ -41,8 +49,11 @@ export default function CheckoutScreen({ navigation }) {
     try {
       const r = await api.placeOrder({
         ...form, fulfilment,
+        payment_method: payAcc ? payAcc.key : 'cod',
+        payment_proof: payAcc && proof ? proof.base64 : undefined,
         items: cart.lines.map((l) => ({ item_id: l.item_id, qty: l.qty })),
       });
+      if (r.proof_error) Toast.show({ type: 'error', text1: 'Screenshot not added', text2: r.proof_error, visibilityTime: 8000 });
       cart.clear();
       if (r.token) await startSession(r); // new account → logged in
       if (!r.token && !isCustomer) {
@@ -59,6 +70,20 @@ export default function CheckoutScreen({ navigation }) {
       setBusy(false);
     }
   };
+
+  const pickProof = async () => {
+    try {
+      const img = await pickImage({ maxWidth: 1400 });
+      if (img) setProof(img);
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Could not add the screenshot', text2: e.message });
+    }
+  };
+
+  const payOptions = [
+    ...(codOn ? [{ key: 'cod', name: cashLabel(fulfilment), icon: 'cash-outline', sub: 'Pay when you get your order' }] : []),
+    ...accounts.map((a) => ({ key: a.key, name: a.name, icon: PAY_TYPES[a.type]?.icon || 'wallet-outline', sub: `Send money to ${a.number}` })),
+  ];
 
   return (
     <Screen
@@ -83,6 +108,44 @@ export default function CheckoutScreen({ navigation }) {
       <Field label="Note for the shop (optional)" value={form.note} onChangeText={set('note')} placeholder="e.g. call before coming" />
       {fulfilment === 'pickup' && !!shop?.address && <Text style={[s.itemMeta, { marginTop: -6, marginBottom: 12 }]}>Pick up from: {shop.address}</Text>}
 
+      {payOptions.length > 1 || payAcc ? (
+        <>
+          <SectionTitle>Payment</SectionTitle>
+          <Card style={{ paddingVertical: 4 }}>
+            {payOptions.map((m, i) => {
+              const on = (payAcc ? payAcc.key : 'cod') === m.key;
+              return (
+                <TouchableOpacity key={m.key} onPress={() => setPayKey(m.key)} testID={`pay-${m.key}`}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: colors.border }}>
+                  <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={22} color={on ? colors.primary : colors.faint} />
+                  <Ionicons name={m.icon} size={20} color={colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '700', color: colors.text }}>{m.name}</Text>
+                    <Text style={s.itemMeta}>{m.sub}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </Card>
+          {payAcc && (
+            <Card style={{ gap: 10 }}>
+              <AccountBox title={payAcc.title} number={payAcc.number} note={payAcc.note} amount={total} />
+              <Text style={s.itemMeta}>Send the money, then add a screenshot of the payment. You can also add it later from your order page.</Text>
+              {proof ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Image source={{ uri: proof.uri }} style={{ width: 56, height: 56, borderRadius: 8 }} />
+                  <Text style={{ flex: 1, fontWeight: '700', color: colors.success }}>Screenshot added</Text>
+                  <Button small variant="outline" title="Change" onPress={pickProof} />
+                  <Button small variant="ghost" title="Remove" onPress={() => setProof(null)} />
+                </View>
+              ) : (
+                <Button small variant="ghost" icon="image-outline" title="Add payment screenshot" onPress={pickProof} testID="co-proof" />
+              )}
+            </Card>
+          )}
+        </>
+      ) : null}
+
       <SectionTitle>Order summary</SectionTitle>
       <Card>
         {cart.lines.map((l) => (
@@ -95,7 +158,7 @@ export default function CheckoutScreen({ navigation }) {
         <KV label="Items" value={money(cart.subtotal)} />
         <KV label={fulfilment === 'pickup' ? 'Pickup' : 'Delivery'} value={fee ? money(fee) : 'Free'} tone={fee ? undefined : 'good'} />
         <KV label="Total to pay" value={money(total)} bold />
-        <Text style={s.itemMeta}>Payment: cash {fulfilment === 'pickup' ? 'at pickup' : 'on delivery'}</Text>
+        <Text style={s.itemMeta}>Payment: {payAcc ? payAcc.name : cashLabel(fulfilment).toLowerCase()}</Text>
       </Card>
 
       {!user && (

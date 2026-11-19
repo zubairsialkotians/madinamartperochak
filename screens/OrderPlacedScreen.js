@@ -3,7 +3,8 @@ import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen, Button, Card, KV } from '../components/ui';
 import { useAuth } from '../components/AuthContext';
-import { money } from '../services/format';
+import { money, paymentLabel } from '../services/format';
+import { AccountBox } from '../components/payments';
 import { colors } from '../theme';
 
 export default function OrderPlacedScreen({ navigation, route }) {
@@ -12,6 +13,8 @@ export default function OrderPlacedScreen({ navigation, route }) {
   const track = () => (isCustomer
     ? navigation.navigate('MyOrderDetail', { id: order.id })
     : navigation.navigate('MyOrderDetail', { id: order.id, key: order.access_key }));
+  const online = order.payment_method && order.payment_method !== 'cod';
+  const [accTitle, accNumber, ...accRest] = (order.payment_account || '').split(' · ');
 
   return (
     <Screen title="Order placed" back={false}>
@@ -27,8 +30,21 @@ export default function OrderPlacedScreen({ navigation, route }) {
       <Card>
         <KV label="Order" value={order.order_no} />
         <KV label="Items" value={String(order.items.length)} />
-        <KV label="Total (cash)" value={money(order.total)} bold />
+        <KV label={`Total (${paymentLabel(order)})`} value={money(order.total)} bold />
       </Card>
+      {online && order.payment_status === 'awaiting' && (
+        <Card style={{ gap: 10, backgroundColor: colors.warningSoft, borderColor: colors.warningSoft }}>
+          <Text style={{ color: colors.warning, fontWeight: '700' }}>Payment screenshot needed</Text>
+          {!!order.payment_account && <AccountBox title={accNumber ? accTitle : ''} number={accNumber || accTitle} note={accRest.join(' · ')} amount={order.total} />}
+          <Text style={{ color: colors.text }}>Send the money by {order.payment_name}, then add the screenshot on your order page.</Text>
+          <Button small title="Add payment screenshot" icon="image-outline" onPress={track} testID="placed-add-proof" />
+        </Card>
+      )}
+      {online && order.payment_status === 'submitted' && (
+        <Card style={{ backgroundColor: colors.successSoft, borderColor: colors.successSoft }}>
+          <Text style={{ color: colors.success }}>We got your {order.payment_name} screenshot. The shop will check it.</Text>
+        </Card>
+      )}
       {newAccount && (
         <Card style={{ backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }}>
           <Text style={{ color: colors.primaryDark }}>

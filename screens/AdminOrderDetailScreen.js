@@ -3,6 +3,7 @@ import { View, Text, Modal, Linking } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Screen, Card, KV, Loading, ErrorBox, SectionTitle, Button, Footer, Field, SelectField, s } from '../components/ui';
 import { OrderItems, OrderTotals, StatusBadge } from '../components/orders';
+import { PaymentCard } from '../components/payments';
 import { useLoad } from '../components/useData';
 import { useAuth } from '../components/AuthContext';
 import { api } from '../services/api';
@@ -28,8 +29,10 @@ export default function AdminOrderDetailScreen({ navigation, route }) {
       setData({ ...r.order, customer_orders: o.customer_orders });
       Toast.show({ type: 'success', text1: r.message });
       setCancelOpen(false);
+      return true;
     } catch (e) {
       Toast.show({ type: 'error', text1: 'Could not update the order', text2: e.message, visibilityTime: 7000 });
+      return false;
     } finally {
       setBusy('');
     }
@@ -98,6 +101,11 @@ export default function AdminOrderDetailScreen({ navigation, route }) {
           onChange={(bid) => bid !== o.branch_id && run('assign', () => api.assignOrder(o.id, bid))}
         />
       )}
+
+      <SectionTitle>Payment</SectionTitle>
+      <PaymentCard order={o} staff busy={busy}
+        onVerify={() => run('verified', () => api.setPaymentStatus(o.id, 'verified'))}
+        onReject={(why) => run('rejected', () => api.setPaymentStatus(o.id, 'rejected', why))} />
 
       <SectionTitle>Items</SectionTitle>
       <OrderItems order={o} showCost={o.status !== 'pending' && o.status !== 'cancelled'} />

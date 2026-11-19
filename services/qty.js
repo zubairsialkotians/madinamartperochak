@@ -18,19 +18,36 @@ export function minOf(p) {
   return Number(p.min_qty) > 0 ? Number(p.min_qty) : stepOf(p);
 }
 
-// Same rule as the server: ≥ minimum and a whole number of steps
-export function validQty(q, p) {
-  if (q <= 0 || q + 1e-9 < minOf(p)) return false;
-  const n = q / stepOf(p);
-  return Math.abs(n - Math.round(n)) < 1e-6;
+const EPS = 1e-6;
+const same = (a, b) => Math.abs(a - b) < EPS;
+
+// The amounts the owner ticked on the item form (e.g. 0.25, 0.5, 1 kg), smallest first
+export function optionsOf(p) {
+  return (p.qty_options || []).map(Number).filter((o) => o > 0).sort((a, b) => a - b);
 }
 
+// Same rule as the server: a ticked amount, the minimum, or a whole number of steps above the minimum
+export function validQty(q, p) {
+  if (q <= 0) return false;
+  if (optionsOf(p).some((o) => same(o, q)) || same(q, minOf(p))) return true;
+  if (q + EPS < minOf(p)) return false;
+  const n = q / stepOf(p);
+  return Math.abs(n - Math.round(n)) < EPS;
+}
+
+// − / + move to the next valid amount, so 250 g → 500 g → 1 kg → 2 kg with step 1 kg
 export function nextQty(q, p) {
-  return cleanQty(q < minOf(p) ? minOf(p) : q + stepOf(p));
+  const step = stepOf(p), min = minOf(p);
+  let x = step * (Math.floor(q / step + EPS) + 1);
+  if (x + EPS < min) x = step * Math.ceil(min / step - EPS);
+  const cands = [x, ...optionsOf(p), min].filter((c) => c > q + EPS);
+  return cleanQty(Math.min(...cands));
 }
 export function prevQty(q, p) {
-  const n = cleanQty(q - stepOf(p));
-  return n + 1e-9 < minOf(p) ? 0 : n;
+  const step = stepOf(p), min = minOf(p);
+  const x = step * (Math.ceil(q / step - EPS) - 1);
+  const cands = [...optionsOf(p), min, ...(x > 0 && x + EPS >= min ? [x] : [])].filter((c) => c < q - EPS);
+  return cands.length ? cleanQty(Math.max(...cands)) : 0;
 }
 
 // Delivery fee as the server computes it

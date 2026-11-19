@@ -95,3 +95,9 @@ export const STATUS_LABELS = {
   pending: 'Pending', confirmed: 'Confirmed', out_for_delivery: 'Out for delivery', ready: 'Ready for pickup',
   delivered: 'Delivered', cancelled: 'Cancelled',
 };
+
+// How an order is paid, in one line (lists, totals, bills)
+export const cashLabel = (fulfilment) => `Cash ${fulfilment === 'pickup' ? 'at pickup' : 'on delivery'}`;
+export function paymentLabel(o) {
+  return o.payment_method && o.payment_method !== 'cod' ? (o.payment_name || 'Online payment') : cashLabel(o.fulfilment);
+}

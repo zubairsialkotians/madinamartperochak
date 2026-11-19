@@ -27,7 +27,8 @@ export default function CheckoutScreen({ navigation }) {
   const accounts = shop?.pay_accounts || [];
   const codOn = shop?.cod !== false || !accounts.length;
   const [payKey, setPayKey] = useState(codOn ? 'cod' : accounts[0]?.key);
-  const payAcc = accounts.find((a) => a.key === payKey);
+  // Picked account gone, or cash switched off meanwhile → first account
+  const payAcc = accounts.find((a) => a.key === payKey) || (codOn ? null : accounts[0]);
   const [proof, setProof] = useState(null); // { uri, base64 } picked, sent with the order
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);

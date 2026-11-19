@@ -12,16 +12,18 @@ export default function ReportsScreen({ route }) {
   const [branchId, setBranchId] = useState(0);
   const params = { from: range.from, to: range.to, branch_id: branchId };
   const { data, loading, error, reload, refresh, refreshing } = useLoad(
-    () => (tab === 'sales' ? api.salesReport(params) : api.profitLoss(params)),
+    // Tag each result with its tab: right after switching, the old tab's data is still here for one render
+    () => (tab === 'sales' ? api.salesReport(params) : api.profitLoss(params)).then((res) => ({ ...res, tab })),
     [tab, range.from, range.to, branchId],
   );
-  const r = data?.report;
+  const r = data?.tab === tab ? data.report : null;
+  const waiting = loading || (!!data && data.tab !== tab && !error);
 
   return (
     <Screen title="Reports" subtitle={rangeLabel(range)} right={<BranchFilter value={branchId} onChange={setBranchId} />} onRefresh={refresh} refreshing={refreshing}>
       <Segmented value={tab} onChange={setTab} options={[{ value: 'sales', label: 'Sales' }, { value: 'pl', label: 'Profit & loss' }]} />
       <DateRangeBar value={range} onChange={setRange} />
-      {loading ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : !r ? null : tab === 'sales' ? (
+      {waiting ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : !r ? null : tab === 'sales' ? (
         <>
           <StatGrid>
             <Stat label="Item sales" value={money(r.sales)} sub={`${r.orders} orders`} tone="primary" />
@@ -32,13 +34,13 @@ export default function ReportsScreen({ route }) {
           {!r.orders ? <Empty icon="bar-chart-outline" text="No sales in this period" /> : (
             <>
               <SectionTitle>Top items</SectionTitle>
-              {r.items.map((i) => (
+              {(r.items || []).map((i) => (
                 <ListItem key={i.item_id} title={i.name} subtitle={`${qtyLabel(i.qty, i.unit)} sold · profit ${money(i.profit)}`} right={money(i.sales)} />
               ))}
               <SectionTitle>By category</SectionTitle>
-              <Card>{r.categories.map((c) => <KV key={c.name} label={c.name} value={money(c.sales)} />)}</Card>
+              <Card>{(r.categories || []).map((c) => <KV key={c.name} label={c.name} value={money(c.sales)} />)}</Card>
               <SectionTitle>By day</SectionTitle>
-              <Card>{r.by_day.map((d) => <KV key={d.date} label={`${niceDate(d.date, false)} · ${d.orders} orders`} value={money(d.sales)} />)}</Card>
+              <Card>{(r.by_day || []).map((d) => <KV key={d.date} label={`${niceDate(d.date, false)} · ${d.orders} orders`} value={money(d.sales)} />)}</Card>
             </>
           )}
         </>

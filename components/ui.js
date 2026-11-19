@@ -282,12 +282,16 @@ export function LoadMore({ hasMore, loading, onPress }) {
 // action: { label, icon, onPress } — a button at the top of the list (e.g. "Add new shop")
 export function SelectField({
   label, value, options, onChange, placeholder = 'Select', searchable = true, alwaysSearch, searchPlaceholder,
-  action, style, error, compact,
+  action, style, error, compact, creatable, createLabel = 'Add',
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const insets = useSafeAreaInsets();
-  const current = options.find((o) => String(o.value) === String(value));
+  // creatable: the value may be text that isn't in the list yet (typed in the search box)
+  const current = options.find((o) => String(o.value) === String(value))
+    || (creatable && value ? { value, label: String(value) } : null);
+  const typed = q.trim().replace(/\s+/g, ' ');
+  const canCreate = creatable && typed && !options.some((o) => String(o.label).toLowerCase() === typed.toLowerCase());
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
     return t ? options.filter((o) => `${o.label} ${o.sub || ''}`.toLowerCase().includes(t)) : options;
@@ -312,8 +316,14 @@ export function SelectField({
               <Text style={s.sheetTitle}>{label || placeholder}</Text>
               <TouchableOpacity onPress={() => setOpen(false)} hitSlop={10}><Ionicons name="close" size={24} color={colors.text} /></TouchableOpacity>
             </View>
-            {searchable && (alwaysSearch || options.length > 8) && (
-              <SearchBar value={q} onChangeText={setQ} placeholder={searchPlaceholder || 'Search'} />
+            {searchable && (alwaysSearch || creatable || options.length > 8) && (
+              <SearchBar value={q} onChangeText={setQ} placeholder={searchPlaceholder || (creatable ? 'Search or type a new one' : 'Search')} />
+            )}
+            {canCreate && (
+              <TouchableOpacity style={[s.option, { gap: 10 }]} onPress={() => { onChange(typed, { value: typed, label: typed }); setOpen(false); setQ(''); }} testID="select-create">
+                <Ionicons name="add-circle" size={22} color={colors.primary} />
+                <Text style={[s.optionText, { color: colors.primary, flex: 1 }]}>{createLabel} “{typed}”</Text>
+              </TouchableOpacity>
             )}
             {action && (
               <TouchableOpacity style={[s.option, { gap: 10 }]} onPress={() => { setOpen(false); setQ(''); action.onPress(); }}>
@@ -334,7 +344,7 @@ export function SelectField({
                   {String(item.value) === String(value) && <Ionicons name="checkmark" size={20} color={colors.primary} />}
                 </TouchableOpacity>
               )}
-              ListEmptyComponent={<Empty text="No matches" />}
+              ListEmptyComponent={canCreate ? null : <Empty text="No matches" />}
             />
           </View>
         </View>

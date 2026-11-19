@@ -115,6 +115,7 @@ export const api = {
   expenses: (p) => get('/admin/expenses', p),
   saveExpense: (d) => post('/admin/expenses/save', d),
   deleteExpense: (id) => post('/admin/expenses/delete', { id }),
+  expenseCategories: () => get('/admin/expenses/categories'),
 
   salesReport: (p) => get('/admin/reports/sales', p),
   profitLoss: (p) => get('/admin/reports/profit-loss', p),

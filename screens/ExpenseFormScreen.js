@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Screen, Field, Button, Footer, ChipRow, Chip, BranchField } from '../components/ui';
+import { Screen, Field, Button, Footer, SelectField, BranchField } from '../components/ui';
+import { useLoad } from '../components/useData';
 import { api } from '../services/api';
 import { confirmAction } from '../services/confirm';
 import { ymd, isYmd } from '../services/format';
@@ -10,7 +11,9 @@ const DEFAULT_CATEGORIES = ['Salary', 'Rent', 'Electricity', 'Delivery', 'Packag
 
 export default function ExpenseFormScreen({ navigation, route }) {
   const e = route.params?.expense;
-  const cats = DEFAULT_CATEGORIES;
+  // Categories already used (most used first), then the usual ones not used yet
+  const used = useLoad(() => api.expenseCategories().then((r) => r.categories).catch(() => []));
+  const cats = [...(used.data || []), ...DEFAULT_CATEGORIES.filter((d) => !(used.data || []).some((u) => u.toLowerCase() === d.toLowerCase()))];
   const [f, setF] = useState({
     category: e?.category || 'General', amount: e ? String(e.amount) : '', note: e?.note || '',
     expense_date: e?.expense_date || ymd(new Date()), branch_id: route.params?.branchId || 0,
@@ -52,8 +55,8 @@ export default function ExpenseFormScreen({ navigation, route }) {
       </Footer>
     )}>
       {!e && <BranchField value={f.branch_id} onChange={set('branch_id')} />}
-      <Field label="Category" value={f.category} onChangeText={set('category')} style={{ marginBottom: 8 }} />
-      <ChipRow>{cats.map((c) => <Chip key={c} label={c} active={f.category === c} onPress={() => set('category')(c)} />)}</ChipRow>
+      <SelectField label="Category" value={f.category} onChange={set('category')} creatable createLabel="Add new category"
+        placeholder="Choose or type a category" options={cats.map((c) => ({ value: c, label: c }))} />
       <Field label="Amount" value={f.amount} onChangeText={set('amount')} keyboardType="decimal-pad" />
       <Field label="Date (YYYY-MM-DD)" value={f.expense_date} onChangeText={set('expense_date')} autoCapitalize="none"
         error={f.expense_date && !isYmd(f.expense_date) ? 'Invalid date' : ''} />

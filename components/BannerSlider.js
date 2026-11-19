@@ -9,6 +9,8 @@ const AUTO_MS = 4000;
 export default function BannerSlider({ banners, width, onPress }) {
   const list = useRef(null);
   const [index, setIndex] = useState(0);
+  const indexRef = useRef(0);
+  indexRef.current = index;
   const dragging = useRef(false);
   const count = banners.length;
   const height = width / RATIO;
@@ -19,11 +21,9 @@ export default function BannerSlider({ banners, width, onPress }) {
     if (count < 2 || !width) return undefined;
     const t = setInterval(() => {
       if (dragging.current) return;
-      setIndex((i) => {
-        const next = (i + 1) % count;
-        list.current?.scrollToOffset({ offset: next * width, animated: true });
-        return next;
-      });
+      const next = (indexRef.current + 1) % count;
+      list.current?.scrollToOffset({ offset: next * width, animated: true });
+      setIndex(next);
     }, AUTO_MS);
     return () => clearInterval(t);
   }, [count, width]);

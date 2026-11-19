@@ -72,6 +72,7 @@ export const api = {
   resetPassword: (email, code, password) => post('/password/reset', { email, code, password }),
   me: () => get('/me'),
   saveProfile: (d) => post('/me/save', d),
+  deleteAccount: () => post('/me/delete'),
   changePassword: (current_password, new_password) => post('/change-password', { current_password, new_password }),
   logout: (push_token) => post('/logout', { push_token }),
   savePushToken: (push_token, remove = false) => post('/push-token', { push_token, remove }),

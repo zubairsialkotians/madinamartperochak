@@ -64,6 +64,7 @@ export const api = {
   placeOrder: (d) => post('/orders/place', d),
   trackOrder: (id, key) => get('/orders/track', { id, key }),
   sendPaymentProof: (id, image, key) => post('/orders/payment-proof', { id, image, key }),
+  reviewOrder: (id, rating, comment, key) => post('/orders/review', { id, rating, comment, key }),
 
   // Account
   register: (d) => post('/register', d),
@@ -96,6 +97,7 @@ export const api = {
   setPaymentStatus: (id, status, note) => post('/admin/orders/payment', { id, status, note }),
   returns: (p) => get('/admin/returns', p),
   saveReturn: (d) => post('/admin/returns/save', d),
+  reviews: (p) => get('/admin/reviews', p),
 
   adminCategories: () => get('/admin/categories'),
   saveCategory: (d) => post('/admin/categories/save', d),

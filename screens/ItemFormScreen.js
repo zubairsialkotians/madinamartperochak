@@ -32,6 +32,7 @@ const PRESETS = {
 const QUICK = { kg: [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 5, 10], litre: [0.25, 0.5, 1, 1.5, 2, 3, 5], g: [50, 100, 200, 250, 500], ml: [100, 200, 250, 500, 750] };
 
 const num = (v) => (v === '' || v == null ? '' : String(v));
+const QUICK_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 export default function ItemFormScreen({ navigation, route }) {
   const { isOwner } = useAuth();
@@ -46,6 +47,19 @@ export default function ItemFormScreen({ navigation, route }) {
   });
   const [options, setOptions] = useState(it?.qty_options ? it.qty_options.split(',').map(Number).filter((n) => n > 0) : []);
   const [images, setImages] = useState(it?.images || []);
+  // Fast food: sizes with their own price (and cost); the item is then sold per piece
+  const [sized, setSized] = useState(it?.sizes?.length > 0);
+  const [sizes, setSizes] = useState((it?.sizes || []).map((z) => ({ name: z.name, price: num(z.price), cost: z.cost ? num(z.cost) : '' })));
+  const setSize = (i, patch) => setSizes((cur) => cur.map((z, k) => (k === i ? { ...z, ...patch } : z)));
+  const hasSize = (n) => sizes.some((z) => z.name.trim().toLowerCase() === n.toLowerCase());
+  const toggleQuickSize = (n) => setSizes((cur) => (hasSize(n)
+    ? cur.filter((z) => z.name.trim().toLowerCase() !== n.toLowerCase())
+    : [...cur, { name: n, price: '', cost: '' }]));
+  const turnSized = (on) => {
+    setSized(on);
+    if (on && !sizes.length) setSizes([{ name: 'S', price: '', cost: '' }, { name: 'M', price: '', cost: '' }, { name: 'L', price: '', cost: '' }]);
+  };
+  const sizesOk = sizes.length > 0 && sizes.every((z) => z.name.trim() && Number(z.price) > 0);
   const [branchId, setBranchId] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -75,8 +89,9 @@ export default function ItemFormScreen({ navigation, route }) {
     setBusy(true);
     try {
       const r = await api.saveItem({
-        ...f, id: it?.id, qty_options: options.join(','), image_ids: images.map((im) => im.id),
+        ...f, id: it?.id, qty_options: sized ? '' : options.join(','), image_ids: images.map((im) => im.id),
         branch_id: branchId,
+        sizes: sized ? sizes.map((z) => ({ name: z.name.trim(), price: z.price, cost: z.cost || 0 })) : [],
       });
       Toast.show({ type: 'success', text1: r.message });
       navigation.goBack();
@@ -88,10 +103,12 @@ export default function ItemFormScreen({ navigation, route }) {
   };
 
   const quick = QUICK[f.unit] || [1, 2, 3, 5, 6, 10, 12, 24];
-  const unitWord = f.unit === 'pcs' ? 'pc' : f.unit;
+  const unit = sized ? 'pcs' : f.unit;
+  const unitWord = unit === 'pcs' ? 'pc' : unit;
+  const canSave = !!f.name.trim() && (sized ? sizesOk : Number(f.price) > 0);
 
   return (
-    <Screen title={it ? 'Edit item' : 'New item'} footer={<Footer><Button testID="item-save" title="Save item" onPress={save} loading={busy} disabled={!f.name.trim() || !(Number(f.price) > 0)} /></Footer>}>
+    <Screen title={it ? 'Edit item' : 'New item'} footer={<Footer><Button testID="item-save" title="Save item" onPress={save} loading={busy} disabled={!canSave} /></Footer>}>
       <SectionTitle>Photos</SectionTitle>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 12 }}>
         {images.map((im, i) => (
@@ -124,6 +141,41 @@ export default function ItemFormScreen({ navigation, route }) {
       <Field label="Name" value={f.name} onChangeText={set('name')} placeholder="e.g. Basmati Rice" testID="item-name" />
       <SelectField label="Category" value={f.category_id} onChange={set('category_id')} placeholder="Choose category"
         options={[{ value: 0, label: 'No category' }, ...(cats.data || []).map((c) => ({ value: c.id, label: c.name }))]} />
+      <Card>
+        <Row label="Fast food item (sizes)" value={sized} onChange={turnSized} hint="e.g. pizza, burger, shake: S, M, L… each with its own price" />
+      </Card>
+
+      {sized ? (
+        <>
+          <SectionTitle>Sizes and prices</SectionTitle>
+          <Card style={{ gap: 4 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+              {QUICK_SIZES.map((n) => <Chip key={n} label={n} active={hasSize(n)} onPress={() => toggleQuickSize(n)} />)}
+            </View>
+            {sizes.map((z, i) => (
+              <View key={i} style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
+                <Field style={{ flex: 1 }} label={i ? undefined : 'Size'} value={z.name} onChangeText={(v) => setSize(i, { name: v })} maxLength={30}
+                  placeholder="e.g. Large" testID={`size-name-${i}`} />
+                <Field style={{ flex: 1 }} label={i ? undefined : 'Price'} value={z.price} onChangeText={(v) => setSize(i, { price: v })} keyboardType="decimal-pad"
+                  testID={`size-price-${i}`} error={z.name.trim() && z.price !== '' && !(Number(z.price) > 0) ? 'Invalid' : ''} />
+                <Field style={{ flex: 1 }} label={i ? undefined : 'Cost (optional)'} value={z.cost} onChangeText={(v) => setSize(i, { cost: v })} keyboardType="decimal-pad" />
+                <TouchableOpacity onPress={() => setSizes((cur) => cur.filter((_, k) => k !== i))} hitSlop={8}
+                  style={{ paddingTop: i ? 12 : 34 }} testID={`size-remove-${i}`}>
+                  <Ionicons name="close-circle" size={22} color={colors.faint} />
+                </TouchableOpacity>
+              </View>
+            ))}
+            {sizes.length < 12 && (
+              <Button small variant="ghost" icon="add-circle-outline" title="Add another size" onPress={() => setSizes((cur) => [...cur, { name: '', price: '', cost: '' }])} />
+            )}
+            <Text style={[s.itemMeta, { marginTop: 6 }]}>
+              Customers choose a size on the product page and see only that size's price. Cost is only for your profit report.
+            </Text>
+            {!sizesOk && <Text style={[s.itemMeta, { color: colors.danger }]}>Give every size a name and a price.</Text>}
+          </Card>
+        </>
+      ) : (
+      <>
       <SelectField label="Sold by (unit)" value={f.unit} onChange={chooseUnit} options={UNITS.map((u) => ({ value: u.value, label: u.label }))} />
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -144,17 +196,20 @@ export default function ItemFormScreen({ navigation, route }) {
         </View>
         <Text style={s.itemMeta}>e.g. Minimum 0.25 and step 0.25 kg → 250 g, 500 g, 750 g, 1 kg…</Text>
       </Card>
+      </>
+      )}
 
       <SectionTitle>Stock</SectionTitle>
       <Card>
         <Row label="Track stock" value={f.track_stock} onChange={set('track_stock')} hint="Off for items you always have" />
         {f.track_stock && (
           <>
-            <Field label={`Low stock alert at (${f.unit})`} value={f.low_stock} onChangeText={set('low_stock')} keyboardType="decimal-pad" />
+            {sized && <Text style={[s.itemMeta, { marginBottom: 8 }]}>Stock counts pieces of any size together. Most shops turn this off for fast food.</Text>}
+            <Field label={`Low stock alert at (${unit})`} value={f.low_stock} onChangeText={set('low_stock')} keyboardType="decimal-pad" />
             {!it && (
               <>
                 <BranchField value={branchId} onChange={setBranchId} label="Opening stock goes to" />
-                <Field label={`Opening stock (${f.unit})`} value={f.opening_stock} onChangeText={set('opening_stock')} keyboardType="decimal-pad"
+                <Field label={`Opening stock (${unit})`} value={f.opening_stock} onChangeText={set('opening_stock')} keyboardType="decimal-pad"
                   hint={isOwner ? 'Main branch unless you choose another' : undefined} testID="item-opening" />
               </>
             )}

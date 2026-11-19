@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen, Card, KV, Footer, Button, Empty, s } from '../components/ui';
 import { ProductImage, QtyStepper } from '../components/shop';
-import { useCart } from '../components/CartContext';
+import { useCart, lineKey, lineName } from '../components/CartContext';
 import { useAuth } from '../components/AuthContext';
 import { api } from '../services/api';
 import { money, perUnit } from '../services/format';
@@ -37,7 +37,11 @@ export default function CartScreen({ navigation }) {
   const fee = deliveryFee(shop, cart.subtotal);
   const free = Number(shop?.free_delivery_over) || 0;
   const belowMin = shop?.min_order > 0 && cart.subtotal < shop.min_order;
-  const overStock = cart.lines.filter((l) => l.max_qty != null && l.qty > l.max_qty + 1e-9);
+  // Stock is per item: sizes of the same item count together
+  const overItem = (l) => l.max_qty != null && cart.qtyOf(l.item_id) > l.max_qty + 1e-9;
+  const overStock = cart.lines.filter(overItem);
+  const accounts = shop?.pay_accounts || [];
+  const cashOk = shop?.cod !== false || !accounts.length;
 
   return (
     <Screen
@@ -52,23 +56,23 @@ export default function CartScreen({ navigation }) {
       )}
     >
       {cart.lines.map((l) => {
-        const over = l.max_qty != null && l.qty > l.max_qty + 1e-9;
+        const over = overItem(l);
         return (
-          <Card key={l.item_id} style={{ flexDirection: 'row', gap: 12, padding: 10 }}>
+          <Card key={lineKey(l.item_id, l.size)} style={{ flexDirection: 'row', gap: 12, padding: 10 }}>
             <TouchableOpacity onPress={() => navigation.navigate('Product', { id: l.item_id })}>
               <ProductImage uri={l.image} style={{ width: 70, height: 70, borderRadius: 10 }} iconSize={24} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                <Text style={[s.itemTitle, { flex: 1 }]} numberOfLines={2}>{l.name}</Text>
-                <TouchableOpacity onPress={() => cart.remove(l.item_id)} hitSlop={8}><Ionicons name="close" size={18} color={colors.faint} /></TouchableOpacity>
+                <Text style={[s.itemTitle, { flex: 1 }]} numberOfLines={2}>{lineName(l)}</Text>
+                <TouchableOpacity onPress={() => cart.remove(l.item_id, l.size)} hitSlop={8}><Ionicons name="close" size={18} color={colors.faint} /></TouchableOpacity>
               </View>
-              <Text style={s.itemMeta}>{perUnit(l.price, l.unit)}</Text>
+              <Text style={s.itemMeta}>{l.size ? `${money(l.price)} each` : perUnit(l.price, l.unit)}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={{ width: 150 }}><QtyStepper small product={l} qty={l.qty} onChange={(q) => cart.setQty(l.item_id, q)} testID={`line-${l.item_id}`} /></View>
+                <View style={{ width: 150 }}><QtyStepper small product={l} qty={l.qty} onChange={(q) => cart.setQty(l.item_id, q, undefined, l.size)} testID={`line-${l.item_id}${l.size ? `-${l.size}` : ''}`} /></View>
                 <Text style={{ flex: 1, textAlign: 'right', fontWeight: '800', color: colors.text, marginTop: 8 }}>{money(round2(l.qty * l.price))}</Text>
               </View>
-              {over && <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4 }}>Only {l.max_qty} {l.unit} available</Text>}
+              {over && <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4 }}>Only {l.max_qty} {l.unit} available{l.size ? ' (all sizes together)' : ''}</Text>}
             </View>
           </Card>
         );
@@ -82,7 +86,11 @@ export default function CartScreen({ navigation }) {
           <Text style={[s.itemMeta, { color: colors.success }]}>Add {money(round2(free - cart.subtotal))} more for free delivery</Text>
         )}
         {belowMin && <Text style={[s.itemMeta, { color: colors.danger }]}>Minimum order is {money(shop.min_order)}</Text>}
-        <Text style={s.itemMeta}>Pay cash on delivery{shop?.pickup ? ' or at pickup' : ''}.</Text>
+        <Text style={s.itemMeta}>
+          {accounts.length
+            ? `Pay ${cashOk ? 'cash or ' : ''}by ${accounts.map((a) => a.name).join(' / ')} — choose at checkout.`
+            : `Pay cash on delivery${shop?.pickup ? ' or at pickup' : ''}.`}
+        </Text>
       </Card>
     </Screen>
   );

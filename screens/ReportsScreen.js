@@ -35,7 +35,7 @@ export default function ReportsScreen({ route }) {
             <>
               <SectionTitle>Top items</SectionTitle>
               {(r.items || []).map((i) => (
-                <ListItem key={i.item_id} title={i.name} subtitle={`${qtyLabel(i.qty, i.unit)} sold · profit ${money(i.profit)}`} right={money(i.sales)} />
+                <ListItem key={i.key || `${i.item_id}|${i.size || ''}`} title={i.name} subtitle={`${qtyLabel(i.qty, i.unit)} sold · profit ${money(i.profit)}`} right={money(i.sales)} />
               ))}
               <SectionTitle>By category</SectionTitle>
               <Card>{(r.categories || []).map((c) => <KV key={c.name} label={c.name} value={money(c.sales)} />)}</Card>

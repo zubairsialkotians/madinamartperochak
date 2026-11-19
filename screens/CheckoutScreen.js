@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Screen, Card, KV, Field, Footer, Button, Segmented, SectionTitle, s } from '../components/ui';
-import { useCart } from '../components/CartContext';
+import { useCart, lineKey, lineName } from '../components/CartContext';
 import { useAuth } from '../components/AuthContext';
 import { api } from '../services/api';
 import { money, qtyLabel } from '../services/format';
@@ -52,7 +52,7 @@ export default function CheckoutScreen({ navigation }) {
         ...form, fulfilment,
         payment_method: payAcc ? payAcc.key : 'cod',
         payment_proof: payAcc && proof ? proof.base64 : undefined,
-        items: cart.lines.map((l) => ({ item_id: l.item_id, qty: l.qty })),
+        items: cart.lines.map((l) => ({ item_id: l.item_id, qty: l.qty, size: l.size || '' })),
       });
       if (r.proof_error) Toast.show({ type: 'error', text1: 'Screenshot not added', text2: r.proof_error, visibilityTime: 8000 });
       cart.clear();
@@ -150,8 +150,8 @@ export default function CheckoutScreen({ navigation }) {
       <SectionTitle>Order summary</SectionTitle>
       <Card>
         {cart.lines.map((l) => (
-          <View key={l.item_id} style={{ flexDirection: 'row', paddingVertical: 4 }}>
-            <Text style={{ flex: 1, color: colors.text }} numberOfLines={1}>{l.name} <Text style={{ color: colors.muted }}>× {qtyLabel(l.qty, l.unit)}</Text></Text>
+          <View key={lineKey(l.item_id, l.size)} style={{ flexDirection: 'row', paddingVertical: 4 }}>
+            <Text style={{ flex: 1, color: colors.text }} numberOfLines={1}>{lineName(l)} <Text style={{ color: colors.muted }}>× {qtyLabel(l.qty, l.unit)}</Text></Text>
             <Text style={{ fontWeight: '700', color: colors.text }}>{money(round2(l.qty * l.price))}</Text>
           </View>
         ))}

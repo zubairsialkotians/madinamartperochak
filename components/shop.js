@@ -35,6 +35,9 @@ export function QtyStepper({ product, qty, onChange, small, testID }) {
 // Grid card: tap → product page; "Add" puts the smallest amount in the cart
 export function ProductCard({ p, onPress, width }) {
   const cart = useCart();
+  // Fast food with several sizes: size is chosen on the product page. One size only: add it straight away.
+  const sized = p.sizes?.length > 1;
+  const oneSize = p.sizes?.length === 1 ? p.sizes[0].name : '';
   const inCart = cart.qtyOf(p.id);
   const off = p.compare_price > p.price ? Math.round((1 - p.price / p.compare_price) * 100) : 0;
   const first = p.qty_options?.length ? p.qty_options[0] : p.min_qty;
@@ -48,16 +51,23 @@ export function ProductCard({ p, onPress, width }) {
       <View style={{ padding: 10, flex: 1 }}>
         <Text style={st.cardName} numberOfLines={2}>{p.name}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-          <Text style={st.cardPrice}>{perUnit(p.price, p.unit)}</Text>
+          <Text style={st.cardPrice}>{sized ? `from ${money(p.price)}` : oneSize ? money(p.sizes[0].price) : perUnit(p.price, p.unit)}</Text>
+          {!!oneSize && <Text style={{ fontSize: 12, color: colors.muted, fontWeight: '700' }}>{oneSize}</Text>}
           {off > 0 && <Text style={st.strike}>{money(p.compare_price)}</Text>}
         </View>
         <View style={{ flex: 1 }} />
-        {p.in_stock && (inCart > 0
-          ? <QtyStepper small product={p} qty={inCart} onChange={(q) => cart.setQty(p.id, q, p)} testID={`card-${p.id}`} />
+        {sized && p.in_stock && (
+          <TouchableOpacity style={st.addBtn} onPress={onPress} testID={`sizes-${p.id}`}>
+            <Ionicons name={inCart > 0 ? 'checkmark' : 'resize-outline'} size={16} color={colors.primary} />
+            <Text style={st.addText}>{inCart > 0 ? `${inCart} in cart · add more` : 'Choose size'}</Text>
+          </TouchableOpacity>
+        )}
+        {!sized && p.in_stock && (inCart > 0
+          ? <QtyStepper small product={p} qty={inCart} onChange={(q) => cart.setQty(p.id, q, p, oneSize)} testID={`card-${p.id}`} />
           : (
-            <TouchableOpacity style={st.addBtn} onPress={() => cart.add(p, first)} testID={`add-${p.id}`}>
+            <TouchableOpacity style={st.addBtn} onPress={() => cart.add(p, oneSize ? 1 : first, oneSize)} testID={`add-${p.id}`}>
               <Ionicons name="add" size={16} color={colors.primary} />
-              <Text style={st.addText}>Add {qtyLabel(first, p.unit)}</Text>
+              <Text style={st.addText}>{oneSize ? 'Add to cart' : `Add ${qtyLabel(first, p.unit)}`}</Text>
             </TouchableOpacity>
           ))}
       </View>

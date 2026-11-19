@@ -4,7 +4,7 @@ import { Screen, SearchBar, ChipRow, Chip, Loading, ErrorBox, Empty, LoadMore, F
 import { ProductImage } from '../components/shop';
 import { usePaged, useLoad } from '../components/useData';
 import { api } from '../services/api';
-import { perUnit, qtyLabel } from '../services/format';
+import { money, perUnit, qtyLabel } from '../services/format';
 import { colors } from '../theme';
 
 export default function ItemsScreen({ navigation }) {
@@ -33,7 +33,10 @@ export default function ItemsScreen({ navigation }) {
               {it.status === 'inactive' && <Badge status="inactive" label="Hidden" />}
               {it.featured && <Badge status="confirmed" label="Featured" />}
             </View>
-            <Text style={s.itemSub}>{perUnit(it.price, it.unit)}{it.category_name ? ` · ${it.category_name}` : ''}</Text>
+            <Text style={s.itemSub} numberOfLines={1}>
+              {it.sizes?.length ? it.sizes.map((z) => `${z.name} ${money(z.price)}`).join(' · ') : perUnit(it.price, it.unit)}
+              {it.category_name ? ` · ${it.category_name}` : ''}
+            </Text>
             <Text style={[s.itemMeta, it.track_stock && it.stock <= it.low_stock && { color: colors.danger }]}>
               {it.track_stock ? `Stock ${qtyLabel(it.stock || 0, it.unit)}` : 'Stock not tracked'}
             </Text>

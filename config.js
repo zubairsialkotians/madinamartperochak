@@ -6,3 +6,7 @@ export const SHOP_KEY = process.env.EXPO_PUBLIC_SHOP_KEY || '';
 
 // Developer promo under the login form (same in every shop's copy of the app)
 export const DEVELOPER_PHONE = '03460364457';
+
+// Play Store: public privacy policy page, and where account-deletion requests go (WhatsApp)
+export const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || 'https://sialkotians.com/madina-mart-privacy-policy/';
+export const DELETION_WHATSAPP = process.env.EXPO_PUBLIC_DELETION_WHATSAPP || '923460364457';

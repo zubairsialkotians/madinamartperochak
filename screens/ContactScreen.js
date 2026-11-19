@@ -37,9 +37,7 @@ export default function ContactScreen() {
   return (
     <Screen title="About & contact" onRefresh={reloadShop}>
       <View style={st.hero}>
-        {shop.logo_url
-          ? <Image source={{ uri: shop.logo_url }} style={st.logo} resizeMode="contain" />
-          : <View style={[st.logo, { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft }]}><Ionicons name="storefront" size={36} color={colors.primary} /></View>}
+        <Image source={shop.logo_url ? { uri: shop.logo_url } : require('../assets/icon.png')} style={st.logo} resizeMode="contain" />
         <Text style={st.name}>{shop.name}</Text>
         <View style={[st.status, { backgroundColor: shop.is_open ? colors.successSoft : colors.dangerSoft }]}>
           <View style={[st.statusDot, { backgroundColor: shop.is_open ? colors.success : colors.danger }]} />

@@ -91,7 +91,7 @@ export default function HomeScreen({ navigation }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right']}>
       <View style={st.top}>
-        {shop?.logo_url ? <Image source={{ uri: shop.logo_url }} style={st.logo} resizeMode="contain" /> : null}
+        <Image source={shop?.logo_url ? { uri: shop.logo_url } : require('../assets/icon.png')} style={st.logo} resizeMode="contain" />
         <View style={{ flex: 1 }}>
           <Text style={st.shopName} numberOfLines={1}>{shop?.name}</Text>
           <Text style={st.hello} numberOfLines={1}>{user ? `Hi, ${user.name?.split(' ')[0] || ''}` : 'Order online, pay on delivery'}</Text>

@@ -41,6 +41,10 @@ module.exports = {
       // Embedded icon font so icons never depend on runtime font loading
       ['expo-font', { fonts: ['./assets/fonts/ionicons.ttf'] }],
       './plugins/withNoForceDark',
+      // Portrait lock must not hide the app from devices without a portrait screen
+      './plugins/withOptionalPortrait',
+      // Google Play requires target API level 36 (Android 16)
+      ['expo-build-properties', { android: { compileSdkVersion: 36, targetSdkVersion: 36, buildToolsVersion: '36.0.0' } }],
     ],
     ios: {
       supportsTablet: true,
@@ -54,6 +58,8 @@ module.exports = {
         backgroundColor: '#ffffff',
       },
       edgeToEdgeEnabled: true,
+      // No ads or ad tracking: keep libraries from adding the advertising ID permission
+      blockedPermissions: ['com.google.android.gms.permission.AD_ID'],
       ...(fs.existsSync(googleServicesFile) ? { googleServicesFile } : {}),
     },
     web: { favicon: './assets/favicon.png' },

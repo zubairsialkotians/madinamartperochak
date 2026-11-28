@@ -18,6 +18,11 @@ function shade(hex, amount) {
 }
 
 export const colors = {
+  // Fills, text on fills, icons on the black steppers (shared code from MasterPOS)
+  brand: primary,
+  onBrand: '#ffffff',
+  onBlack: '#ffffff',
+  shadow: '#0b1020',
   primary,
   primaryDark: shade(primary, 0.35),
   primarySoft: tint(primary, 0.88),

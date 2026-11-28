@@ -9,3 +9,6 @@ export const DEVELOPER_PHONE = '03460364457';
 
 // Play Store: public privacy policy page (account deletion is done in the app, from My account)
 export const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || 'https://sialkotians.com/madina-mart-privacy-policy/';
+
+// Shared code (offline orders, saved menu) asks for the shop key this way
+export const getShopKey = () => SHOP_KEY;
